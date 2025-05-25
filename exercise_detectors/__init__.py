@@ -1,0 +1,6 @@
+from exercise_detectors.stationary_running import StationaryRunningDetector
+from exercise_detectors.pushup import PushupDetector
+from exercise_detectors.squat import SquatDetector
+from exercise_detectors.jumping_jack import JumpingJackDetector
+
+# Import additional detectors here
