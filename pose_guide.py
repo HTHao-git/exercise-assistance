@@ -76,7 +76,7 @@ class PoseGuide:
             dict: Dictionary containing key points and measurements
         """
         key_points = {}
-        
+
         if landmarks is None:
             return key_points
         
@@ -175,14 +175,14 @@ class PoseGuide:
         cv2.addWeighted(overlay, 0.5, frame, 0.5, 0, frame)
         
         # Draw title
-        cv2.putText(frame, instructions["title"], 
+        cv2.putText(frame, "-" + instructions["title"], 
                    (int(frame.shape[1] * 0.1), int(frame.shape[0] * 0.15)), 
                    cv2.FONT_HERSHEY_SIMPLEX, 1.0, (0, 255, 0), 2)
         
         # Draw instructions
         for i, instruction in enumerate(instructions["instructions"]):
             y_pos = int(frame.shape[0] * (0.25 + i * 0.08))
-            cv2.putText(frame, "• " + instruction, 
+            cv2.putText(frame, instruction, 
                        (int(frame.shape[1] * 0.1), y_pos), 
                        cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 255), 1)
         

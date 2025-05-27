@@ -11,6 +11,34 @@ class JumpingJackDetector(BaseExerciseDetector):
         self.arm_threshold = JUMPING_JACK_ARM_THRESHOLD
         self.leg_threshold = JUMPING_JACK_LEG_THRESHOLD
         
+    def calibrate(self, landmarks, key_points=None):
+        """
+        Calibrate the jumping jack detector with the user's specific body proportions
+        
+        Args:
+            landmarks: MediaPipe pose landmarks
+            key_points: Optional dictionary with extracted key points for jumping jacks
+            
+        Returns:
+            bool: True if calibration successful, False otherwise
+        """
+        # First call the parent class implementation to store key_points
+        super().calibrate(landmarks, key_points)
+        
+        if landmarks and key_points:
+            # If specific key points for jumping jacks were provided, use them
+            if 'shoulder_width' in key_points:
+                # Use the resting shoulder width as reference
+                self.base_shoulder_width = key_points['shoulder_width']
+                
+            if 'hip_width' in key_points:
+                # Use the resting hip width as reference
+                self.base_hip_width = key_points['hip_width']
+                
+            return True
+            
+        return landmarks is not None
+    
     def detect(self, landmarks):
         if not landmarks:
             return self.counter, "No landmarks"

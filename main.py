@@ -119,10 +119,75 @@ class ExerciseRecognitionSystem:
         
     def process_calibration(self, frame, landmarks=None):
         """Process calibration countdown and capture"""
-        if not self.calibrating:
-            return frame
-        
         current_time = time.time()
+        
+        # In capture phase - check this first
+        if self.capture_start is not None:
+            elapsed = current_time - self.capture_start
+            remaining = max(0, self.capture_seconds - int(elapsed))
+            
+            # Display capture progress
+            self.calibration_message = f"Hold position! Capturing... {remaining}"
+            
+            # Try to calibrate with current frame
+            if landmarks and elapsed >= 1.0:  # Capture one frame per second during capture
+                # Extract key points for the specific exercise
+                key_points = self.pose_guide.extract_key_points(landmarks, self.exercise_mode)
+                
+                # Try to calibrate with current frame
+                detector = self.detectors.get(self.exercise_mode)
+                if detector:
+                    # Pass both landmarks and key points for more detailed calibration
+                    detector.calibrate(landmarks, key_points=key_points)
+            
+            # Capture finished
+            if elapsed >= self.capture_seconds:
+                self.capture_start = None
+                self.calibrating = False
+                
+                detector = self.detectors.get(self.exercise_mode)
+                if detector and landmarks:  # Only mark as calibrated if landmarks were detected
+                    detector.calibrated = True
+                    self.calibration_message = "Calibration complete!"
+                else:
+                    # No landmarks detected during calibration
+                    self.calibration_message = "Calibration failed! No body detected."
+        
+        # In instructions and countdown phase
+        elif self.countdown_start is not None:
+            elapsed = current_time - self.countdown_start
+            remaining = max(0, self.countdown_seconds - int(elapsed))
+            
+            # Show pose instructions for the first part of the countdown
+            if elapsed <= self.instruction_seconds:
+                # Draw pose-specific instructions
+                frame = self.pose_guide.draw_pose_instructions(frame, self.exercise_mode, remaining)
+            else:
+                # Display countdown only
+                self.calibration_message = f"Get ready! {remaining}..."
+                overlay = frame.copy()
+                cv2.rectangle(overlay, (0, frame.shape[0] - 80), (frame.shape[1], frame.shape[0]), (0, 0, 0), -1)
+                cv2.addWeighted(overlay, 0.6, frame, 0.4, 0, frame)
+                cv2.putText(frame, self.calibration_message, 
+                            (20, frame.shape[0] - 40), cv2.FONT_HERSHEY_SIMPLEX, 
+                            1.0, (255, 255, 255), 2, cv2.LINE_AA)
+            
+            # Countdown finished, start capture
+            if elapsed >= self.countdown_seconds:
+                self.countdown_start = None
+                self.capture_start = current_time
+                self.calibration_message = "Hold position! Capturing..."
+        
+        # Draw calibration message only if not in instruction display phase
+        if self.countdown_start is None or current_time - self.countdown_start > self.instruction_seconds:
+            overlay = frame.copy()
+            cv2.rectangle(overlay, (0, frame.shape[0] - 80), (frame.shape[1], frame.shape[0]), (0, 0, 0), -1)
+            cv2.addWeighted(overlay, 0.6, frame, 0.4, 0, frame)
+            cv2.putText(frame, self.calibration_message, 
+                        (20, frame.shape[0] - 40), cv2.FONT_HERSHEY_SIMPLEX, 
+                        1.0, (255, 255, 255), 2, cv2.LINE_AA)
+        
+        return frame
         
         # In instructions and countdown phase
         if self.countdown_start is not None:
@@ -174,8 +239,11 @@ class ExerciseRecognitionSystem:
                 self.calibrating = False
                 self.calibration_message = "Calibration complete!"
                 detector = self.detectors.get(self.exercise_mode)
-                if detector:
+                if detector and landmarks:  # Only mark as calibrated if landmarks were detected
                     detector.calibrated = True
+                else:
+                    # No landmarks detected during calibration
+                    self.calibration_message = "Calibration failed! No body detected."
         
         # Draw calibration message only if not in instruction display phase
         if self.countdown_start is None or current_time - self.countdown_start > self.instruction_seconds:
@@ -189,9 +257,9 @@ class ExerciseRecognitionSystem:
         return frame
     
 def main():
-    panel_width = 320
-    cam_width = 640
-    cam_height = 480
+    panel_width = 400
+    cam_width = 1200
+    cam_height = 800
 
     # Initialize video capture
     cap = cv2.VideoCapture(0)
