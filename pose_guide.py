@@ -10,6 +10,16 @@ class PoseGuide:
     def __init__(self):
         # Dictionary of pose instructions for each exercise type
         self.pose_instructions = {
+            0: {  # Camera and Position Testing0: {  # Camera and Position Testing
+                "title": "Camera and Position Testing",
+                "instructions": [
+                    "Stand in front of the camera.",
+                    "Ensure your whole body fits in the frame.",
+                    "Check lighting: avoid strong shadows or glare.",
+                    "You can move around to check camera coverage."
+                ]
+            },
+
             1: {  # Stationary Running
                 "title": "Stationary Running Calibration",
                 "instructions": [

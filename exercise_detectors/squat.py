@@ -9,60 +9,52 @@ class SquatDetector(BaseExerciseDetector):
     def __init__(self):
         super().__init__("Squats")
         self.knee_angle_threshold = SQUAT_KNEE_ANGLE_THRESHOLD
-        
+        self.last_debug_info = {}
+
     def calibrate(self, landmarks, key_points=None):
-        """
-        Calibrate the squat detector with the user's specific body proportions
-        
-        Args:
-            landmarks: MediaPipe pose landmarks
-            key_points: Optional dictionary with extracted key points for squats
-            
-        Returns:
-            bool: True if calibration successful, False otherwise
-        """
-        # First call the parent class implementation to store key_points
         super().calibrate(landmarks, key_points)
-        
         if landmarks and key_points:
-            # If specific key points for squats were provided, use them
             if 'hip_height' in key_points:
-                # Store the reference hip height in standing position
                 self.reference_hip_height = key_points['hip_height']
-                
             if 'hip_ankle_distance' in key_points:
-                # Store the reference distance between hips and ankles
                 self.reference_hip_ankle_distance = key_points['hip_ankle_distance']
-                # Could customize knee angle threshold based on user's leg proportions
-                # (this is just an example, might need adjustment)
-                
             return True
-            
         return landmarks is not None
-        
+
     def detect(self, landmarks):
         if not landmarks:
+            self.last_debug_info = {"status": "No landmarks"}
             return self.counter, "No landmarks"
-            
-        # Get hip, knee, and ankle points for angle calculation
-        hip = [landmarks[mp_pose.PoseLandmark.LEFT_HIP.value].x,
-              landmarks[mp_pose.PoseLandmark.LEFT_HIP.value].y]
-        knee = [landmarks[mp_pose.PoseLandmark.LEFT_KNEE.value].x,
-               landmarks[mp_pose.PoseLandmark.LEFT_KNEE.value].y]
-        ankle = [landmarks[mp_pose.PoseLandmark.LEFT_ANKLE.value].x,
-                landmarks[mp_pose.PoseLandmark.LEFT_ANKLE.value].y]
         
+        # Get hip, knee, and ankle points for angle calculation (Left side)
+        hip = [landmarks[mp_pose.PoseLandmark.LEFT_HIP.value].x,
+               landmarks[mp_pose.PoseLandmark.LEFT_HIP.value].y]
+        knee = [landmarks[mp_pose.PoseLandmark.LEFT_KNEE.value].x,
+                landmarks[mp_pose.PoseLandmark.LEFT_KNEE.value].y]
+        ankle = [landmarks[mp_pose.PoseLandmark.LEFT_ANKLE.value].x,
+                 landmarks[mp_pose.PoseLandmark.LEFT_ANKLE.value].y]
+
         # Calculate knee angle
         knee_angle = calculate_angle(hip, knee, ankle)
-        
+
+        # DEBUG INFO for live panel
+        self.last_debug_info = {
+            "knee_angle": round(knee_angle, 2),
+            "knee_angle_threshold": round(self.knee_angle_threshold, 2),
+            "hip_y": round(hip[1], 4),
+            "knee_y": round(knee[1], 4),
+            "ankle_y": round(ankle[1], 4),
+            "stage": self.stage,
+            "counter": self.counter
+        }
+
         # Determine squat stage based on knee angle
-        if self.stage == None or self.stage == 'up':
+        if self.stage is None or self.stage == 'up':
             if knee_angle < self.knee_angle_threshold:
                 self.stage = 'down'
-                
         elif self.stage == 'down':
             if knee_angle > self.knee_angle_threshold:
                 self.stage = 'up'
                 self.counter += 1
-                
+
         return self.counter, self.stage
